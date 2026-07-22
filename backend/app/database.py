@@ -1,3 +1,4 @@
+from app import models # noqa: F401
 from dotenv import load_dotenv
 from sqlmodel import SQLModel, create_engine, Session
 import os
