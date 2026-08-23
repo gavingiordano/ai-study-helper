@@ -5,6 +5,7 @@ from sqlmodel import Field, SQLModel
 
 
 class User(SQLModel, table=True):
+    __tablename__ = "users"
     id: int | None = Field(default=None, primary_key=True)
     name: str | None = None
     email: EmailStr = Field(index=True, unique=True)
@@ -30,16 +31,18 @@ class UserLogin(SQLModel):
 
 
 class UserSession(SQLModel, table=True):
+    __tablename__ = "user_sessions"
     id: int | None = Field(default=None, primary_key=True)
     session_id: str = Field(index=True, unique=True)
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="users.id")
     expires_at: datetime
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class Course(SQLModel, table=True):
+    __tablename__ = "courses"
     id: int | None = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="users.id")
     name: str
     code: str | None  = None
     description: str | None = None
@@ -47,8 +50,9 @@ class Course(SQLModel, table=True):
 
 
 class Document(SQLModel, table=True):
+    __tablename__ = "documents"
     id: int | None = Field(default=None, primary_key=True)
-    course_id: int = Field(foreign_key="course.id")
+    course_id: int = Field(foreign_key="courses.id")
     displayed_name: str
     original_filename: str
     file_path: str
