@@ -76,22 +76,8 @@ def logout(
     return {"message": "Logged out successfully"}
 
 
-def get_current_user(
-    session_id: str | None = Cookie(default=None),
-    session: Session = Depends(get_session) # noqa: B008
-) -> User:
-    if not session_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    user_session = session.exec(select(UserSession).where(UserSession.session_id == session_id)).first()
-    if not user_session or user_session.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
-        raise HTTPException(status_code=401, detail="Session expired or invalid")
-    user = session.exec(select(User).where(User.id == user_session.user_id)).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
-
 @router.get("/auth/me", response_model=UserPublic)
 def get_current_user_info(
-    current_user: User = Depends(get_current_user) # noqa: B008
+    current_user: User = Depends(auth.get_current_user) # noqa: B008
 ) -> UserPublic:
     return current_user
