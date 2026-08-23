@@ -24,6 +24,19 @@ class UserPublic(SQLModel):
     email: EmailStr
 
 
+class UserLogin(SQLModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+
+
+class UserSession(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    session_id: str = Field(index=True, unique=True)
+    user_id: int = Field(foreign_key="user.id")
+    expires_at: datetime
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
+
+
 class Course(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
