@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from app import auth
 from app.database import get_session
 from app.models import User, UserCreate, UserLogin, UserPublic, UserSession
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from sqlmodel import Session, select
 
 router = APIRouter()
@@ -11,8 +11,9 @@ router = APIRouter()
 
 # Authentication routes
 
+
 @router.post("/auth/signup", response_model=UserPublic)
-async def signup(
+def signup(
     user_create: UserCreate,
     session: Session = Depends(get_session) # noqa: B008
 ) -> UserPublic:
@@ -32,7 +33,7 @@ async def signup(
 
 
 @router.post("/auth/login", response_model=UserPublic)
-async def login(
+def login(
     user_login: UserLogin,
     response: Response,
     session: Session = Depends(get_session) # noqa: B008
@@ -53,8 +54,44 @@ async def login(
         key="session_id",
         value=session_id,
         httponly=True,
-        secure=True,
+        secure=False,
         samesite="lax",
         max_age=5 * 3600,
     )
     return user
+
+
+@router.get("/auth/logout")
+def logout(
+    response: Response,
+    session_id: str | None = Cookie(default=None),
+    session: Session = Depends(get_session) # noqa: B008
+) -> dict:
+    if session_id:
+        user_session = session.exec(select(UserSession).where(UserSession.session_id == session_id)).first()
+        if user_session:
+            session.delete(user_session)
+            session.commit()
+    response.delete_cookie(key="session_id")
+    return {"message": "Logged out successfully"}
+
+
+def get_current_user(
+    session_id: str | None = Cookie(default=None),
+    session: Session = Depends(get_session) # noqa: B008
+) -> User:
+    if not session_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user_session = session.exec(select(UserSession).where(UserSession.session_id == session_id)).first()
+    if not user_session or user_session.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        raise HTTPException(status_code=401, detail="Session expired or invalid")
+    user = session.exec(select(User).where(User.id == user_session.user_id)).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+@router.get("/auth/me", response_model=UserPublic)
+def get_current_user_info(
+    current_user: User = Depends(get_current_user) # noqa: B008
+) -> UserPublic:
+    return current_user
